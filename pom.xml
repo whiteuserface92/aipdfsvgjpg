@@ -71,6 +71,46 @@
 			<artifactId>springdoc-openapi-ui</artifactId>
 			<version>${springdoc.version}</version>
 		</dependency>
+    <!-- PDFBox 의존성 -->
+    <dependency>
+        <groupId>org.apache.pdfbox</groupId>
+        <artifactId>pdfbox</artifactId>
+        <version>2.0.27</version> <!-- 최신 버전으로 사용 -->
+    </dependency>
+
+    <!-- PDFBox-Imageio 의존성 -->
+    <dependency>
+        <groupId>org.apache.pdfbox</groupId>
+        <artifactId>pdfbox-tools</artifactId>
+        <version>2.0.27</version> <!-- 최신 버전으로 사용 -->
+    </dependency>
+
+		<dependency>
+        <groupId>org.json</groupId>
+        <artifactId>json</artifactId>
+        <version>20210307</version>
+    </dependency>
+
+	 <dependency>
+			<groupId>com.aspose</groupId>
+			<artifactId>aspose-psd</artifactId>
+			<version>23.12</version>
+			<scope>system</scope>
+			<systemPath>C:/Users/paru/Downloads/aspose/aspose-psd-23.12-jdk16.jar</systemPath>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.xmlgraphics</groupId>
+			<artifactId>batik-svggen</artifactId>
+			<version>1.14</version>
+		</dependency>
+
+    <!-- <dependency>
+        <groupId>com.aspose</groupId>
+        <artifactId>aspose-psd</artifactId>
+        <version>23.12</version> 
+    </dependency> -->
+
 	</dependencies>
 
 	<build>
