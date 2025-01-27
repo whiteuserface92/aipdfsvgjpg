@@ -3,7 +3,16 @@ package com.viniciusaugusto.orderapi.controllers;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.rendering.ImageType;
-// import org.apache.batik.apps.rasterizer.SVGConverter;
+
+import org.apache.batik.svggen.SVGGraphics2D;
+import org.apache.batik.svggen.SVGGeneratorContext;
+import org.apache.batik.dom.GenericDOMImplementation;
+
+import org.apache.batik.transcoder.Transcoder;
+import org.apache.batik.transcoder.TranscoderInput;
+import org.apache.batik.transcoder.TranscoderOutput;
+import org.apache.batik.transcoder.image.PNGTranscoder;
+import org.apache.batik.transcoder.TranscoderException;
 
 import org.json.JSONObject;
 
@@ -11,13 +20,28 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
+
+import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.*;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+
 import java.util.UUID;
 
 import java.nio.file.Path;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+
+import org.w3c.dom.DOMImplementation;
+import org.w3c.dom.Document;
+
+import net.sourceforge.tess4j.Tesseract;
+import net.sourceforge.tess4j.TesseractException;
 
 // import com.aspose.psd.Image;
 // import com.aspose.psd.imageoptions.SvgOptions;
@@ -52,7 +76,6 @@ public class ClientController {
         long fileSize = file.getSize();
 
         System.out.println("fileSize : "+fileSize);
-        System.out.println("fileSize : "+fileSize);
         
         long startTime = System.currentTimeMillis(); // 실행 시간 측정 시작
 
@@ -83,25 +106,20 @@ public class ClientController {
         // 첫 번째 페이지를 이미지로 변환
         BufferedImage bufferedImage = pdfRenderer.renderImage(0, 1.0f, ImageType.RGB);
 
+        String jpgFilePath = pdfFilePath.replace(".pdf","_before.jpg");
+
         // 이미지 저장
-        File outputFile = new File(uploadFolder+"output_image.jpg");
+        File outputFile = new File(jpgFilePath);
 
         // JPG 생성
         ImageIO.write(bufferedImage, "JPG", outputFile);
-
-        // // ByteArrayOutputStream을 사용하여 이미지를 JPG 포맷으로 바이트 배열로 변환
-        // ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        // ImageIO.write(bufferedImage, "JPG", byteArrayOutputStream);
-
-        // // ByteArrayOutputStream에서 데이터를 byte[]로 추출
-        // byte[] imageBytes = byteArrayOutputStream.toByteArray();
 
         // PDF 문서 닫기
         document.close();
 
         long pdfToJpgendTime = System.currentTimeMillis();
 
-        // 실행 시간 측정 종료
+        // 실행 시간 측정 종료 (전체)
         long endTime = System.currentTimeMillis();
 
 
@@ -112,10 +130,9 @@ public class ClientController {
 
         // JSON 객체로 결과 반환
         JSONObject responseJson = new JSONObject();
-        responseJson.put("All executionTime", executionTime); // 실행 시간
-        responseJson.put("convertAiToPdf executionTime", convertAiToPdfexecutionTime); // convertAiToPdf
-        responseJson.put("pdfToJpg executionTime", pdfToJpgexecutionTime); // convertAiToPdf
-        responseJson.put("imageData", outputFile); // JPG 바이트 데이터
+        responseJson.put("All executionTime", executionTime / 1000); // 실행 시간
+        responseJson.put("convertAiToPdf executionTime", convertAiToPdfexecutionTime / 1000); // convertAiToPdf
+        responseJson.put("pdfToJpg executionTime", pdfToJpgexecutionTime / 1000); // convertAiToPdf
 
         // JSON 객체를 문자열로 반환
         return responseJson.toString();
@@ -125,7 +142,6 @@ public class ClientController {
     public String convertAiToJpgVtwo(@RequestParam("filetwo") MultipartFile file) throws IOException, InterruptedException {
         long fileSize = file.getSize();
 
-        System.out.println("fileSize : "+fileSize);
         System.out.println("fileSize : "+fileSize);
         
         long startTime = System.currentTimeMillis(); // 실행 시간 측정 시작
@@ -163,13 +179,6 @@ public class ClientController {
         // JPG 생성
         ImageIO.write(bufferedImage, "JPG", outputFile);
 
-        // // ByteArrayOutputStream을 사용하여 이미지를 JPG 포맷으로 바이트 배열로 변환
-        // ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        // ImageIO.write(bufferedImage, "JPG", byteArrayOutputStream);
-
-        // // ByteArrayOutputStream에서 데이터를 byte[]로 추출
-        // byte[] imageBytes = byteArrayOutputStream.toByteArray();
-
         // PDF 문서 닫기
         document.close();
 
@@ -192,6 +201,87 @@ public class ClientController {
         responseJson.put("imageData", outputFile); // JPG 바이트 데이터
 
         // JSON 객체를 문자열로 반환
+        return responseJson.toString();
+    }
+
+    @PostMapping("/convertAiToPng")
+    public String convertAiToSvgtoJpg(@RequestParam("file") MultipartFile file) throws IOException, InterruptedException {
+        long fileSize = file.getSize();
+
+        System.out.println("fileSize : "+fileSize);
+        
+        long startTime = System.currentTimeMillis(); // 실행 시간 측정 시작
+
+        String fileAbsolutePath = uploadFolder;
+        String fileName = file.getOriginalFilename();
+        String fullFile = fileAbsolutePath+fileName;
+
+        // AI 파일을 PDF로 변환하는 외부 툴을 호출 (예: Inkscape 또는 ImageMagick)
+        long convertAiToPdfstartTime = System.currentTimeMillis();
+
+        //확장자를 변경하고, 복사하여 저장하는 로직 - (사용)
+        String pdfFilePath = copyFileWithNewExtension(fileAbsolutePath+file.getOriginalFilename(), fileAbsolutePath, "pdf");
+
+        // 확장자만 변경하여 pdf로 만드는 로직 - (비사용용)
+        // String pdfFilePath = changeFileExtension(fullFile, "pdf");
+ 
+        long convertAiToPdfendTime = System.currentTimeMillis();
+
+        // File pdfFile = new File(pdfFilePath);
+
+        long pdfToPngStartTime = System.currentTimeMillis();
+        // PDF 파일을 읽기 위해 PDDocument로 로드
+
+        String pngFilePath = pdfFilePath.replace(".pdf",".png");
+        
+        convertPdfToPng(pdfFilePath, pngFilePath);
+
+        long pdfToPngEndTime = System.currentTimeMillis();
+
+        long pngToJpgStartTime = System.currentTimeMillis();
+
+        //PNG -> JPG 이름변경 -> 형식변경 방법으로 변경경
+        String jpgFilePath = pngFilePath.replace(".png",".jpg");
+        
+        jpgFilePath = convertPngToJpg(pngFilePath, jpgFilePath);
+
+        long pngToJpgEndTime = System.currentTimeMillis();
+
+
+
+        // 실행 시간 측정 종료 (전체)
+        long endTime = System.currentTimeMillis();
+
+
+        // 실행 시간 계산
+        long executionTime = endTime - startTime; 
+        long convertAiToPdfexecutionTime = convertAiToPdfendTime - convertAiToPdfstartTime;
+        long pdfToPngExecutionTime = pdfToPngEndTime - pdfToPngStartTime;
+        long pngToJpgExecutionTime = pngToJpgEndTime - pngToJpgStartTime;
+
+        // JSON 객체로 결과 반환
+        JSONObject responseJson = new JSONObject();
+        responseJson.put("All executionTime", executionTime / 1000); // 실행 시간
+        responseJson.put("convertAiToPdf executionTime", convertAiToPdfexecutionTime / 1000); // convertAiToPdf
+        responseJson.put("pdfToPng ExecutionTime", pdfToPngExecutionTime / 1000); // convertpdfTopng
+        responseJson.put("pngToJpg ExecutionTime", pngToJpgExecutionTime / 1000); // PNG -> JPG 변환시간
+
+        
+        responseJson.put("jpgFilePath", jpgFilePath); // jpgFilePath
+
+        // JSON 객체를 문자열로 반환
+        return responseJson.toString();
+    }
+
+    @PostMapping("/ocrJpgImageTest")
+    public String convertAiToSvgtoJpg(@RequestParam("imageFileName") String imageFileName) throws IOException, InterruptedException {
+
+        String result = ocrReturnString(imageFileName);
+
+        JSONObject responseJson = new JSONObject();
+
+        responseJson.put("Result : ",result);
+        
         return responseJson.toString();
     }
 
@@ -336,6 +426,115 @@ public class ClientController {
             return "확장자가 없습니다."; // 확장자가 없는 경우
         }
     }
+
+    public void convertPdfToSvg(String pdfFilePath, String svgFilePath) throws IOException {
+        PDDocument document = null; // Initialize to null
+        try {
+            document = PDDocument.load(new File(pdfFilePath));
+            PDFRenderer pdfRenderer = new PDFRenderer(document);
+    
+            for (int page = 0; page < document.getNumberOfPages(); page++) {
+                BufferedImage image = pdfRenderer.renderImageWithDPI(page, 300);
+    
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ImageIO.write(image, "png", baos);
+                ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+    
+                TranscoderInput input = new TranscoderInput(bais);
+    
+                FileOutputStream fos = new FileOutputStream(new File(svgFilePath.replace(".svg", "_" + page + ".svg")));
+                TranscoderOutput output = new TranscoderOutput(fos);
+    
+                Transcoder transcoder = new PNGTranscoder();
+                try {
+                    transcoder.transcode(input, output);
+                } catch (TranscoderException e) {
+                    throw new IOException("Error converting to SVG: " + e.getMessage(), e); // Wrap and rethrow
+                } finally {
+                    fos.close();
+                    baos.close();
+                    bais.close();
+                }
+            }
+        } finally {  // Ensure document is closed even if exception occurs
+            if (document != null) {
+                document.close();
+            }
+        }
+    }
+
+    public void convertPdfToPng(String pdfFilePath, String pngFilePath) throws IOException {
+        try (PDDocument document = PDDocument.load(new File(pdfFilePath))) {
+            PDFRenderer pdfRenderer = new PDFRenderer(document);
+
+            for (int page = 0; page < document.getNumberOfPages(); page++) {
+                BufferedImage image = pdfRenderer.renderImageWithDPI(page, 300);
+                File file = new File(pngFilePath);
+                ImageIO.write(image, "png", file);
+            }
+        }
+    }
+
+    public static String convertPngToJpg(String pngFilePath, String jpgFilePath) throws IOException {
+        File pngFile = new File(pngFilePath);
+        if (!pngFile.exists()) {
+            System.err.println("PNG file not found: " + pngFilePath);
+            // Handle the error appropriately (e.g., throw an exception)
+            throw new IOException("PNG file not found: " + pngFilePath);
+        }
+        BufferedImage image = ImageIO.read(pngFile);
+    
+        File jpgFile = new File(jpgFilePath);
+        ImageIO.write(image, "jpg", jpgFile); // PNG 이미지를 JPG 형식으로 저장
+    
+        System.out.println("PNG 파일을 JPG 파일로 변환했습니다: " + jpgFile.getAbsolutePath());
+        return jpgFilePath;
+    }
+
+
+    //OCR 인식
+    public String ocrReturnString(String imageName){
+         // 1. Tesseract 객체 생성
+         Tesseract tesseract = new Tesseract();
+
+         // 2. Tesseract OCR 데이터 디렉토리 설정 (필요한 경우)
+         tesseract.setDatapath("C:/Program Files/Tesseract-OCR/tessdata"); // 예시: tessdata 디렉토리 절대 경로
+
+         // 3. Tesseract OCR - 한국어 설정
+         tesseract.setLanguage("kor");
+        //  tesseract.setPageSegMode(0);
+        //  tesseract.setOcrEngineMode(OcrEngineMode.LSTM_ONLY);
+
+         // 4. 이미지 파일 경로 설정
+         String imagePath = uploadFolder+imageName; // 이미지 파일 경로
+
+         File imageFile = new File(imagePath);
+
+         if(!imageFile.exists()){
+            System.err.println("이미지 파일이 존재하지 않습니다: " + imagePath);
+            return null; // 또는 적절한 예외 처리
+         }
+
+        String result = "";
+ 
+         try {
+             // 4. OCR 수행
+             result = tesseract.doOCR(new File(imagePath));
+
+             result.replaceAll("\n","");
+             result.replaceAll("|", "");
+
+         } catch (TesseractException e) {
+            System.err.println("OCR 수행 중 오류 발생: " + e.getMessage());
+            // 예외 처리 (로그 출력, 예외 다시 던지기 등)
+            return result; // 또는 빈 문자열 반환
+         }
+         return result;
+    }
+
+
+
+
 
     // public String aiConvertSvg(String aiFilePath, String svgOutputPath){
 

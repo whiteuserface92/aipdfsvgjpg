@@ -99,17 +99,42 @@
 			<systemPath>C:/Users/paru/Downloads/aspose/aspose-psd-23.12-jdk16.jar</systemPath>
 		</dependency>
 
-		<dependency>
+		<!-- Batik for SVG generation -->
+    <dependency>
+        <groupId>org.apache.xmlgraphics</groupId>
+        <artifactId>batik-svggen</artifactId>
+        <version>1.14</version>
+    </dependency>
+
+    <!-- Batik Transcoder for additional SVG utilities -->
+    <dependency>
 			<groupId>org.apache.xmlgraphics</groupId>
-			<artifactId>batik-svggen</artifactId>
-			<version>1.14</version>
+			<artifactId>batik-transcoder</artifactId>
+			<version>1.14</version>  
 		</dependency>
 
-    <!-- <dependency>
-        <groupId>com.aspose</groupId>
-        <artifactId>aspose-psd</artifactId>
-        <version>23.12</version> 
-    </dependency> -->
+		<dependency>
+			<groupId>org.apache.xmlgraphics</groupId>
+			<artifactId>batik-codec</artifactId>
+			<version>1.14</version>  
+		</dependency>
+
+		<dependency>
+			<groupId>net.sourceforge.tess4j</groupId>
+			<artifactId>tess4j</artifactId>
+			<version>5.4.0</version>
+		</dependency>
+
+		<dependency>
+    <groupId>net.java.dev.jna</groupId>
+    <artifactId>jna</artifactId>
+    <version>5.12.1</version>
+</dependency>
+<dependency>
+    <groupId>net.java.dev.jna</groupId>
+    <artifactId>jna-platform</artifactId>
+    <version>5.12.1</version>
+</dependency>
 
 	</dependencies>
 
